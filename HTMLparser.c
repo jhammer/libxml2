@@ -619,12 +619,12 @@ htmlSkipBlankChars(xmlParserCtxtPtr ctxt) {
 #define NB_FONTSTYLE 8
 #define PHRASE "em", "strong", "dfn", "code", "samp", "kbd", "var", "cite", "abbr", "acronym"
 #define NB_PHRASE 10
-#define SPECIAL "a", "img", "applet", "embed", "object", "font", "basefont", "br", "script", "map", "q", "sub", "sup", "span", "bdo", "iframe"
-#define NB_SPECIAL 16
+#define SPECIAL "img", "applet", "embed", "object", "font", "basefont", "br", "script", "map", "q", "sub", "sup", "span", "bdo", "iframe"
+#define NB_SPECIAL 15
 #define INLINE FONTSTYLE, PHRASE, SPECIAL, FORMCTRL
 #define NB_INLINE NB_PCDATA + NB_FONTSTYLE + NB_PHRASE + NB_SPECIAL + NB_FORMCTRL
-#define BLOCK HEADING, LIST, "pre", "p", "dl", "div", "center", "noscript", "noframes", "blockquote", "form", "isindex", "hr", "table", "fieldset", "address"
-#define NB_BLOCK NB_HEADING + NB_LIST + 14
+#define BLOCK HEADING, LIST, "pre", "p", "dl", "div", "center", "noscript", "noframes", "blockquote", "form", "isindex", "hr", "table", "fieldset", "address", "a"
+#define NB_BLOCK NB_HEADING + NB_LIST + 15
 #define FORMCTRL "input", "select", "textarea", "label", "button"
 #define NB_FORMCTRL 5
 #define PCDATA
@@ -767,8 +767,8 @@ static const char* const dir_attr[] = { "dir", NULL} ;
 
 static const htmlElemDesc
 html40ElementTable[] = {
-{ "a",		0, 0, 0, 0, 0, 0, 1, "anchor ",
-	DECL html_inline , NULL , DECL a_attrs , DECL target_attr, NULL
+{ "a",		0, 0, 0, 0, 0, 0, 0, "anchor ",
+	DECL html_flow , NULL , DECL a_attrs , DECL target_attr, NULL
 },
 { "abbr",	0, 0, 0, 0, 0, 0, 1, "abbreviated form",
 	DECL html_inline , NULL , DECL html_attrs, NULL, NULL
@@ -854,7 +854,7 @@ html40ElementTable[] = {
 { "em",		0, 3, 0, 0, 0, 0, 1, "emphasis",
 	DECL html_inline, NULL, DECL html_attrs, NULL, NULL
 },
-{ "embed",	0, 1, 0, 0, 1, 1, 1, "generic embedded object ",
+{ "embed",	0, 1, 0, 1, 1, 1, 1, "generic embedded object ",
 	EMPTY, NULL, DECL embed_attrs, NULL, NULL
 },
 { "fieldset",	0, 0, 0, 0, 0, 0, 0, "form control group ",
@@ -1090,7 +1090,7 @@ static const char * const htmlStartClose[] = {
 "colgroup",	"caption", "colgroup", "col", "p", NULL,
 "col",		"caption", "col", "p", NULL,
 "table",	"p", "head", "h1", "h2", "h3", "h4", "h5", "h6", "pre",
-		"listing", "xmp", "a", NULL,
+		"listing", "xmp", NULL,
 "th",		"th", "td", "p", "span", "font", "a", "b", "i", "u", NULL,
 "td",		"th", "td", "p", "span", "font", "a", "b", "i", "u", NULL,
 "tr",		"th", "td", "tr", "caption", "col", "colgroup", "p", NULL,
