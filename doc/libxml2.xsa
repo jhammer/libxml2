@@ -8,95 +8,67 @@
   </vendor>
   <product id="libxml2">
     <name>libxml2</name>
-    <version>2.9.1</version>
-    <last-release> Apr 19 2013</last-release>
+    <version>v2.9.9</version>
+    <last-release> Jan 03 2019</last-release>
     <info-url>http://xmlsoft.org/</info-url>
-    <changes>   -  Features:
-    Support for Python3 (Daniel Veillard),
-    Add xmlXPathSetContextNode and xmlXPathNodeEval (Alex Bligh)
+    <changes>   - Security:
+  CVE-2018-9251 CVE-2018-14567 Fix infinite loop in LZMA decompression (Nick Wellnhofer),
+  CVE-2018-14404 Fix nullptr deref with XPath logic ops (Nick Wellnhofer),
   
-   -  Documentation:
-    Add documentation for xmllint --xpath (Daniel Veillard),
-    Fix the URL of the SAX documentation from James (Daniel Veillard),
-    Fix spelling of "length". (Michael Wood)
+   - Documentation:
+  reader: Fix documentation comment (Mohammed Sadiq)
   
-   -  Portability:
-    Fix python bindings with versions older than 2.7 (Daniel Veillard),
-    rebuild docs:Makefile.am (Roumen Petrov),
-    elfgcchack.h after rebuild in doc (Roumen Petrov),
-    elfgcchack for buf module (Roumen Petrov),
-    Fix a uneeded and wrong extra link parameter (Daniel Veillard),
-    Few cleanup patches for Windows (Denis Pauk),
-    Fix rpmbuild --nocheck (Mark Salter),
-    Fix for win32/configure.js and WITH_THREAD_ALLOC (Daniel Richard),
-    Fix Broken multi-arch support in xml2-config (Daniel Veillard),
-    Fix a portability issue for GCC &lt; 3.4.0 (Daniel Veillard),
-    Windows build fixes (Daniel Richard),
-    Fix a thread portability problem (Friedrich Haubensak),
-    Downgrade autoconf requirement to 2.63 (Daniel Veillard)
+   - Portability:
+  Fix MSVC build with lzma (Nick Wellnhofer),
+  Variables need 'extern' in static lib on Cygwin (Michael Haubenwallner),
+  Really declare dllexport/dllimport for Cygwin (Michael Haubenwallner),
+  Merge branch 'patch-2' into 'master' (Nick Wellnhofer),
+  Change dir to $THEDIR after ACLOCAL_PATH check autoreconf creates aclocal.m4 in $srcdir (Vitaly Buka),
+  Improve error message if pkg.m4 couldn't be found (Nick Wellnhofer),
+  NaN and Inf fixes for pre-C99 compilers (Nick Wellnhofer)
   
-   -  Bug Fixes:
-    Fix a linking error for python bindings (Daniel Veillard),
-    Fix a couple of return without value (Jüri Aedla),
-    Improve the hashing functions (Daniel Franke),
-    Improve handling of xmlStopParser() (Daniel Veillard),
-    Remove risk of lockup in dictionary initialization (Daniel Veillard),
-    Activate detection of encoding in external subset (Daniel Veillard),
-    Fix an output buffer flushing conversion bug (Mikhail Titov),
-    Fix an old bug in xmlSchemaValidateOneElement (Csaba László),
-    Fix configure cannot remove messages (Gilles Espinasse),
-    fix schema validation in combination with xsi:nil (Daniel Veillard),
-    xmlCtxtReadFile doesn't work with literal IPv6 URLs (Steve Wolf),
-    Fix a few problems with setEntityLoader (Alexey Neyman),
-    Detect excessive entities expansion upon replacement (Daniel Veillard),
-    Fix the flushing out of raw buffers on encoding conversions (Daniel,
-Veillard),
-    Fix some buffer conversion issues (Daniel Veillard),
-    When calling xmlNodeDump make sure we grow the buffer quickly (Daniel,
-Veillard),
-    Fix an error in the progressive DTD parsing code (Dan Winship),
-    xmllint should not load DTD by default when using the reader (Daniel,
-Veillard),
-    Try IBM-037 when looking for EBCDIC handlers (Petr Sumbera),
-    Fix potential out of bound access (Daniel Veillard),
-    Fix large parse of file from memory (Daniel Veillard),
-    Fix a bug in the nsclean option of the parser (Daniel Veillard),
-    Fix a regression in 2.9.0 breaking validation while streaming (Daniel,
-Veillard),
-    Remove potential calls to exit() (Daniel Veillard)
+   - Bug Fixes:
+  Revert "Support xmlTextReaderNextSibling w/o preparsed doc" (Nick Wellnhofer),
+  Fix building relative URIs (Thomas Holder),
+  Problem with data in interleave in RelaxNG validation (Nikolai Weibull),
+  Fix memory leak in xmlSwitchInputEncodingInt error path (Nick Wellnhofer),
+  Set doc on element obtained from freeElems (Nick Wellnhofer),
+  Fix HTML serialization with UTF-8 encoding (Nick Wellnhofer),
+  Use actual doc in xmlTextReaderRead*Xml (Nick Wellnhofer),
+  Unlink node before freeing it in xmlSAX2StartElement (Nick Wellnhofer),
+  Check return value of nodePush in xmlSAX2StartElement (Nick Wellnhofer),
+  Free input buffer in xmlHaltParser (Nick Wellnhofer),
+  Reset HTML parser input pointers on encoding failure (Nick Wellnhofer),
+  Don't run icu_parse_test if EUC-JP is unsupported (Nick Wellnhofer),
+  Fix xmlSchemaValidCtxtPtr reuse memory leak (Greg Hildstrom),
+  Fix xmlTextReaderNext with preparsed document (Felix Bünemann),
+  Remove stray character from comment (Nick Wellnhofer),
+  Remove a misleading line from xmlCharEncOutput (Andrey Bienkowski),
+  HTML noscript should not close p (Daniel Veillard),
+  Don't change context node in xmlXPathRoot (Nick Wellnhofer),
+  Stop using XPATH_OP_RESET (Nick Wellnhofer),
+  Revert "Change calls to xmlCharEncInput to set flush false" (Nick Wellnhofer)
   
-   -  Improvements:
-    Regenerated API, and testapi, rebuild documentation (Daniel Veillard),
-    Fix tree iterators broken by 2to3 script (Daniel Veillard),
-    update all tests for Python3 and Python2 (Daniel Veillard),
-    A few more fixes for python 3 affecting libxml2.py (Daniel Veillard),
-    Fix compilation on Python3 (Daniel Veillard),
-    Converting apibuild.py to python3 (Daniel Veillard),
-    First pass at starting porting to python3 (Daniel Veillard),
-    updated configure.in for python3 (Daniel Veillard),
-    Add support for xpathRegisterVariable in Python (Shaun McCance),
-    Added a regression tests from bug 694228 data (Daniel Veillard),
-    Cache presence of '&lt;' in entities content (Daniel Veillard),
-    Avoid extra processing on entities (Daniel Veillard),
-    Python binding for xmlRegisterInputCallback (Alexey Neyman),
-    Python bindings: DOM casts everything to xmlNode (Alexey Neyman),
-    Define LIBXML_THREAD_ALLOC_ENABLED via xmlversion.h (Tim Starling),
-    Adding streaming validation to runtest checks (Daniel Veillard),
-    Add a --pushsmall option to xmllint (Daniel Veillard)
+   - Improvements:
+  Fix "Problem with data in interleave in RelaxNG validation" (Nikolai Weibull),
+  cleanup: remove some unreachable code (Thomas Holder),
+  add --relative to testURI (Thomas Holder),
+  Remove redefined starts and defines inside include elements (Nikolai Weibull),
+  Allow choice within choice in nameClass in RELAX NG (Nikolai Weibull),
+  Look inside divs for starts and defines inside include (Nikolai Weibull),
+  Add compile and libxml2-config.cmake to .gitignore (Nikolai Weibull),
+  Stop using doc-&gt;charset outside parser code (Nick Wellnhofer),
+  Add newlines to 'xmllint --xpath' output (Nick Wellnhofer),
+  Don't include SAX.h from globals.h (Nick Wellnhofer),
+  Support xmlTextReaderNextSibling w/o preparsed doc (Felix Bünemann),
+  Don't instruct user to run make when autogen.sh failed (林博仁(Buo-ren Lin)),
+  Run Travis ASan tests with "sudo: required" (Nick Wellnhofer),
+  Improve restoring of context size and position (Nick Wellnhofer),
+  Simplify and harden nodeset filtering (Nick Wellnhofer),
+  Avoid unnecessary backups of the context node (Nick Wellnhofer),
+  Fix inconsistency in xmlXPathIsInf (Nick Wellnhofer)
   
-   -  Cleanups:
-    Switched comment in file to UTF-8 encoding (Daniel Veillard),
-    Extend gitignore (Daniel Veillard),
-    Silent the new python test on input (Alexey Neyman),
-    Cleanup of a duplicate test (Daniel Veillard),
-    Cleanup on duplicate test expressions (Daniel Veillard),
-    Fix compiler warning after 153cf15905cf4ec080612ada6703757d10caba1e (Patrick,
-Gansterer),
-    Spec cleanups and a fix for multiarch support (Daniel Veillard),
-    Silence a clang warning (Daniel Veillard),
-    Cleanup the Copyright to be pure MIT Licence wording (Daniel Veillard),
-    rand_seed should be static in dict.c (Wouter Van Rooy),
-    Fix typos in parser comments (Jan Pokorný)
+   - Cleanups:
   
 
 </changes>

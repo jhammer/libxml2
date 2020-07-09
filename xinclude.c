@@ -125,7 +125,7 @@ xmlXIncludeErrMemory(xmlXIncludeCtxtPtr ctxt, xmlNodePtr node,
  *
  * Handle an XInclude error
  */
-static void
+static void LIBXML_ATTR_FORMAT(4,0)
 xmlXIncludeErr(xmlXIncludeCtxtPtr ctxt, xmlNodePtr node, int error,
                const char *msg, const xmlChar *extra)
 {
@@ -147,7 +147,7 @@ xmlXIncludeErr(xmlXIncludeCtxtPtr ctxt, xmlNodePtr node, int error,
  *
  * Emit an XInclude warning.
  */
-static void
+static void LIBXML_ATTR_FORMAT(4,0)
 xmlXIncludeWarn(xmlXIncludeCtxtPtr ctxt, xmlNodePtr node, int error,
                const char *msg, const xmlChar *extra)
 {
@@ -449,6 +449,10 @@ xmlXIncludeParseFile(xmlXIncludeCtxtPtr ctxt, const char *URL) {
 
     xmlCtxtUseOptions(pctxt, ctxt->parseFlags | XML_PARSE_DTDLOAD);
 
+    /* Don't read from stdin. */
+    if ((URL != NULL) && (strcmp(URL, "-") == 0))
+        URL = "./-";
+
     inputStream = xmlLoadExternalEntity(URL, NULL, pctxt);
     if (inputStream == NULL) {
 	xmlFreeParserCtxt(pctxt);
@@ -667,7 +671,7 @@ xmlXIncludeRecurseDoc(xmlXIncludeCtxtPtr ctxt, xmlDocPtr doc,
     int i;
 
     /*
-     * Avoid recursion in already substitued resources
+     * Avoid recursion in already substituted resources
     for (i = 0;i < ctxt->urlNr;i++) {
 	if (xmlStrEqual(doc->URL, ctxt->urlTab[i]))
 	    return;
@@ -752,7 +756,7 @@ xmlXIncludeRecurseDoc(xmlXIncludeCtxtPtr ctxt, xmlDocPtr doc,
  * @txt:  the new text node
  * @url:  the associated URL
  *
- * Add a new txtument to the list
+ * Add a new text node to the list
  */
 static void
 xmlXIncludeAddTxt(xmlXIncludeCtxtPtr ctxt, xmlNodePtr txt, const xmlURL url) {
@@ -1067,7 +1071,7 @@ xmlXIncludeCopyRange(xmlXIncludeCtxtPtr ctxt, xmlDocPtr target,
 		case XML_ELEMENT_DECL:
 		case XML_ATTRIBUTE_DECL:
 		case XML_ENTITY_NODE:
-		    /* Do not copy DTD informations */
+		    /* Do not copy DTD information */
 		    break;
 		case XML_ENTITY_DECL:
 		    /* handle crossing entities -> stack needed */
@@ -1258,11 +1262,13 @@ struct _xmlXIncludeMergeData {
  * @doc:  the including doc
  * @nr: the entity name
  *
- * Inplements the merge of one entity
+ * Implements the merge of one entity
  */
 static void
-xmlXIncludeMergeEntity(xmlEntityPtr ent, xmlXIncludeMergeDataPtr data,
-	               xmlChar *name ATTRIBUTE_UNUSED) {
+xmlXIncludeMergeEntity(void *payload, void *vdata,
+	               const xmlChar *name ATTRIBUTE_UNUSED) {
+    xmlEntityPtr ent = (xmlEntityPtr) payload;
+    xmlXIncludeMergeDataPtr data = (xmlXIncludeMergeDataPtr) vdata;
     xmlEntityPtr ret, prev;
     xmlDocPtr doc;
     xmlXIncludeCtxtPtr ctxt;
@@ -1333,7 +1339,7 @@ error:
  * @doc:  the including doc
  * @from:  the included doc
  *
- * Inplements the entity merge
+ * Implements the entity merge
  *
  * Returns 0 if merge succeeded, -1 if some processing failed
  */
@@ -1367,7 +1373,7 @@ xmlXIncludeMergeEntities(xmlXIncludeCtxtPtr ctxt, xmlDocPtr doc,
 	data.doc = doc;
 
 	xmlHashScan((xmlHashTablePtr) source->entities,
-		    (xmlHashScanner) xmlXIncludeMergeEntity, &data);
+		    xmlXIncludeMergeEntity, &data);
     }
     source = from->extSubset;
     if ((source != NULL) && (source->entities != NULL)) {
@@ -1382,7 +1388,7 @@ xmlXIncludeMergeEntities(xmlXIncludeCtxtPtr ctxt, xmlDocPtr doc,
 	if ((!xmlStrEqual(target->ExternalID, source->ExternalID)) &&
 	    (!xmlStrEqual(target->SystemID, source->SystemID))) {
 	    xmlHashScan((xmlHashTablePtr) source->entities,
-			(xmlHashScanner) xmlXIncludeMergeEntity, &data);
+			xmlXIncludeMergeEntity, &data);
 	}
     }
     return(0);
@@ -1602,6 +1608,7 @@ loaded:
 		               XML_XINCLUDE_XPTR_RESULT,
 			       "XPointer is not a range: #%s\n",
 			       fragment);
+                xmlXPathFreeObject(xptr);
 		xmlXPathFreeContext(xptrctxt);
 		xmlFree(URL);
 		xmlFree(fragment);
@@ -1609,6 +1616,7 @@ loaded:
 	    case XPATH_NODESET:
 	        if ((xptr->nodesetval == NULL) ||
 		    (xptr->nodesetval->nodeNr <= 0)) {
+                    xmlXPathFreeObject(xptr);
 		    xmlXPathFreeContext(xptrctxt);
 		    xmlFree(URL);
 		    xmlFree(fragment);
@@ -1804,6 +1812,10 @@ xmlXIncludeLoadTxt(xmlXIncludeCtxtPtr ctxt, const xmlChar *url, int nr) {
     xmlParserInputPtr inputStream;
     int xinclude_multibyte_fallback_used = 0;
 
+    /* Don't read from stdin. */
+    if (xmlStrcmp(url, BAD_CAST "-") == 0)
+        url = BAD_CAST "./-";
+
     /*
      * Check the URL and remove any fragment identifier
      */
@@ -1912,7 +1924,7 @@ xinclude_multibyte_fallback:
 
 	    cur = xmlStringCurrentChar(NULL, &content[i], &l);
 	    if (!IS_CHAR(cur)) {
-		/* Handle splitted multibyte char at buffer boundary */
+		/* Handle split multibyte char at buffer boundary */
 		if (((len - i) < 4) && (!xinclude_multibyte_fallback_used)) {
 		    xinclude_multibyte_fallback_used = 1;
 		    xmlBufShrink(buf->buffer, i);
@@ -1921,6 +1933,7 @@ xinclude_multibyte_fallback:
 		    xmlXIncludeErr(ctxt, ctxt->incTab[nr]->ref,
 				   XML_XINCLUDE_INVALID_CHAR,
 				   "%s contains invalid char\n", URL);
+		    xmlFreeParserCtxt(pctxt);
 		    xmlFreeParserInputBuffer(buf);
 		    xmlFree(URL);
 		    return(-1);
@@ -1961,6 +1974,7 @@ static int
 xmlXIncludeLoadFallback(xmlXIncludeCtxtPtr ctxt, xmlNodePtr fallback, int nr) {
     xmlXIncludeCtxtPtr newctxt;
     int ret = 0;
+    int oldNbErrors = ctxt->nbErrors;
 
     if ((fallback == NULL) || (fallback->type == XML_NAMESPACE_DECL) ||
         (ctxt == NULL))
@@ -1977,7 +1991,7 @@ xmlXIncludeLoadFallback(xmlXIncludeCtxtPtr ctxt, xmlNodePtr fallback, int nr) {
 	newctxt->base = xmlStrdup(ctxt->base);	/* Inherit the base from the existing context */
 	xmlXIncludeSetFlags(newctxt, ctxt->parseFlags);
 	ret = xmlXIncludeDoProcess(newctxt, ctxt->doc, fallback->children);
-	if (ctxt->nbErrors > 0)
+	if (ctxt->nbErrors > oldNbErrors)
 	    ret = -1;
 	else if (ret > 0)
 	    ret = 0;	/* xmlXIncludeDoProcess can return +ve number */
@@ -2131,7 +2145,7 @@ xmlXIncludeLoadNode(xmlXIncludeCtxtPtr ctxt, int nr) {
 	xmlNodePtr children;
 
 	/*
-	 * Time to try a fallback if availble
+	 * Time to try a fallback if available
 	 */
 #ifdef DEBUG_XINCLUDE
 	xmlGenericError(xmlGenericErrorContext, "error looking for fallback\n");
@@ -2176,7 +2190,7 @@ xmlXIncludeLoadNode(xmlXIncludeCtxtPtr ctxt, int nr) {
  * @ctxt: an XInclude context
  * @nr: the node number
  *
- * Inplement the infoset replacement for the given node
+ * Implement the infoset replacement for the given node
  *
  * Returns 0 if substitution succeeded, -1 if some processing failed
  */
@@ -2600,7 +2614,7 @@ xmlXIncludeProcessTree(xmlNodePtr tree) {
  * @node: a node in an XML document
  *
  * Implement the XInclude substitution for the given subtree reusing
- * the informations and data coming from the given context.
+ * the information and data coming from the given context.
  *
  * Returns 0 if no substitution were done, -1 if some processing failed
  *    or the number of substitutions done.

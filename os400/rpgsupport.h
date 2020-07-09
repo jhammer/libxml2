@@ -1,5 +1,5 @@
 /**
-***     Additional delarations for ILE/RPG support.
+***     Additional declarations for ILE/RPG support.
 ***
 ***     See Copyright for the status of this software.
 ***
@@ -141,17 +141,17 @@ XMLPUBFUN void *        __xmlVaArg(char * * list, void * dest, size_t argsize);
 XMLPUBFUN void          __xmlVaEnd(char * * list);
 
 #ifdef LIBXML_XPATH_ENABLED
-XMLPUBFUN int		__xmlXPathNodeSetGetLength(xmlNodeSetPtr ns);
-XMLPUBFUN xmlNodePtr	__xmlXPathNodeSetItem(xmlNodeSetPtr ns, int index);
-XMLPUBFUN int		__xmlXPathNodeSetIsEmpty(xmlNodeSetPtr ns);
+XMLPUBFUN int           __xmlXPathNodeSetGetLength(xmlNodeSetPtr ns);
+XMLPUBFUN xmlNodePtr    __xmlXPathNodeSetItem(xmlNodeSetPtr ns, int index);
+XMLPUBFUN int           __xmlXPathNodeSetIsEmpty(xmlNodeSetPtr ns);
 #endif
 
 #ifdef LIBXML_HTML_ENABLED
-XMLPUBFUN const char *	__htmlDefaultSubelement(const htmlElemDesc * elt);
-XMLPUBFUN int	__htmlElementAllowedHereDesc(const htmlElemDesc * parent,
-			const htmlElemDesc * elt);
+XMLPUBFUN const char *  __htmlDefaultSubelement(const htmlElemDesc * elt);
+XMLPUBFUN int   __htmlElementAllowedHereDesc(const htmlElemDesc * parent,
+                        const htmlElemDesc * elt);
 XMLPUBFUN const char * *
-			__htmlRequiredAttrs(const htmlElemDesc * elt);
+                        __htmlRequiredAttrs(const htmlElemDesc * elt);
 #endif
 
 #endif

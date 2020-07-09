@@ -7,6 +7,11 @@
  * Daniel Veillard <veillard@redhat.com>
  */
 
+/* To avoid EBCDIC trouble when parsing on zOS */
+#if defined(__MVS__)
+#pragma convert("ISO8859-1")
+#endif
+
 #define IN_LIBXML
 #include "libxml.h"
 
@@ -62,10 +67,10 @@ struct _xmlSchemaValDate {
     long		year;
     unsigned int	mon	:4;	/* 1 <=  mon    <= 12   */
     unsigned int	day	:5;	/* 1 <=  day    <= 31   */
-    unsigned int	hour	:5;	/* 0 <=  hour   <= 23   */
+    unsigned int	hour	:5;	/* 0 <=  hour   <= 24   */
     unsigned int	min	:6;	/* 0 <=  min    <= 59	*/
     double		sec;
-    unsigned int	tz_flag	:1;	/* is tzo explicitely set? */
+    unsigned int	tz_flag	:1;	/* is tzo explicitly set? */
     signed int		tzo	:12;	/* -1440 <= tzo <= 1440;
 					   currently only -840 to +840 are needed */
 };
@@ -194,7 +199,7 @@ static xmlSchemaTypePtr xmlSchemaTypeNmtokensDef = NULL;
  ************************************************************************/
 /**
  * xmlSchemaTypeErrMemory:
- * @extra:  extra informations
+ * @extra:  extra information
  *
  * Handle an out of memory condition
  */
@@ -614,6 +619,11 @@ xmlSchemaInitTypes(void)
     xmlSchemaTypesInitialized = 1;
 }
 
+static void
+xmlSchemaFreeTypeEntry(void *type, const xmlChar *name ATTRIBUTE_UNUSED) {
+    xmlSchemaFreeType((xmlSchemaTypePtr) type);
+}
+
 /**
  * xmlSchemaCleanupTypes:
  *
@@ -641,7 +651,7 @@ xmlSchemaCleanupTypes(void) {
 	xmlFree((xmlSchemaParticlePtr) particle);
 	xmlSchemaTypeAnyTypeDef->subtypes = NULL;
     }
-    xmlHashFree(xmlSchemaTypesBank, (xmlHashDeallocator) xmlSchemaFreeType);
+    xmlHashFree(xmlSchemaTypesBank, xmlSchemaFreeTypeEntry);
     xmlSchemaTypesInitialized = 0;
 }
 
@@ -1119,7 +1129,7 @@ xmlSchemaGetBuiltInListSimpleTypeItemType(xmlSchemaTypePtr type)
 #define VALID_HOUR(hr)          ((hr >= 0) && (hr <= 23))
 #define VALID_MIN(min)          ((min >= 0) && (min <= 59))
 #define VALID_SEC(sec)          ((sec >= 0) && (sec < 60))
-#define VALID_TZO(tzo)          ((tzo > -840) && (tzo < 840))
+#define VALID_TZO(tzo)          ((tzo >= -840) && (tzo <= 840))
 #define IS_LEAP(y)						\
 	(((y % 4 == 0) && (y % 100 != 0)) || (y % 400 == 0))
 
@@ -1139,16 +1149,23 @@ static const unsigned int daysInMonthLeap[12] =
 #define VALID_DATE(dt)						\
 	(VALID_YEAR(dt->year) && VALID_MONTH(dt->mon) && VALID_MDAY(dt))
 
+#define VALID_END_OF_DAY(dt)					\
+	((dt)->hour == 24 && (dt)->min == 0 && (dt)->sec == 0)
+
 #define VALID_TIME(dt)						\
-	(VALID_HOUR(dt->hour) && VALID_MIN(dt->min) &&		\
-	 VALID_SEC(dt->sec) && VALID_TZO(dt->tzo))
+	(((VALID_HOUR(dt->hour) && VALID_MIN(dt->min) &&	\
+	  VALID_SEC(dt->sec)) || VALID_END_OF_DAY(dt)) &&	\
+	 VALID_TZO(dt->tzo))
 
 #define VALID_DATETIME(dt)					\
 	(VALID_DATE(dt) && VALID_TIME(dt))
 
-#define SECS_PER_MIN            (60)
-#define SECS_PER_HOUR           (60 * SECS_PER_MIN)
-#define SECS_PER_DAY            (24 * SECS_PER_HOUR)
+#define SECS_PER_MIN            60
+#define MINS_PER_HOUR           60
+#define HOURS_PER_DAY           24
+#define SECS_PER_HOUR           (MINS_PER_HOUR * SECS_PER_MIN)
+#define SECS_PER_DAY            (HOURS_PER_DAY * SECS_PER_HOUR)
+#define MINS_PER_DAY            (HOURS_PER_DAY * MINS_PER_HOUR)
 
 static const long dayInYearByMonth[12] =
 	{ 0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334 };
@@ -1208,7 +1225,14 @@ _xmlSchemaParseGYear (xmlSchemaValDatePtr dt, const xmlChar **str) {
     firstChar = cur;
 
     while ((*cur >= '0') && (*cur <= '9')) {
-	dt->year = dt->year * 10 + (*cur - '0');
+        int digit = *cur - '0';
+
+        if (dt->year > LONG_MAX / 10)
+            return 2;
+	dt->year *= 10;
+        if (dt->year > LONG_MAX - digit)
+            return 2;
+        dt->year += digit;
 	cur++;
 	digcnt++;
     }
@@ -1355,7 +1379,7 @@ _xmlSchemaParseTime (xmlSchemaValDatePtr dt, const xmlChar **str) {
 	return ret;
     if (*cur != ':')
 	return 1;
-    if (!VALID_HOUR(value))
+    if (!VALID_HOUR(value) && value != 24 /* Allow end-of-day hour */)
 	return 2;
     cur++;
 
@@ -1377,7 +1401,7 @@ _xmlSchemaParseTime (xmlSchemaValDatePtr dt, const xmlChar **str) {
     if (ret != 0)
 	return ret;
 
-    if ((!VALID_SEC(dt->sec)) || (!VALID_TZO(dt->tzo)))
+    if (!VALID_TIME(dt))
 	return 2;
 
     *str = cur;
@@ -1777,10 +1801,8 @@ xmlSchemaValidateDuration (xmlSchemaTypePtr type ATTRIBUTE_UNUSED,
     xmlSchemaValPtr dur;
     int isneg = 0;
     unsigned int seq = 0;
-    double         num;
-    int            num_type = 0;  /* -1 = invalid, 0 = int, 1 = floating */
-    const xmlChar  desig[]  = {'Y', 'M', 'D', 'H', 'M', 'S'};
-    const double   multi[]  = { 0.0, 0.0, 86400.0, 3600.0, 60.0, 1.0, 0.0};
+    long days, secs = 0;
+    double sec_frac = 0.0;
 
     if (duration == NULL)
 	return -1;
@@ -1805,6 +1827,10 @@ xmlSchemaValidateDuration (xmlSchemaTypePtr type ATTRIBUTE_UNUSED,
 	return -1;
 
     while (*cur != 0) {
+        long           num = 0;
+        size_t         has_digits = 0;
+        int            has_frac = 0;
+        const xmlChar  desig[] = {'Y', 'M', 'D', 'H', 'M', 'S'};
 
         /* input string should be empty or invalid date/time item */
         if (seq >= sizeof(desig))
@@ -1812,52 +1838,103 @@ xmlSchemaValidateDuration (xmlSchemaTypePtr type ATTRIBUTE_UNUSED,
 
         /* T designator must be present for time items */
         if (*cur == 'T') {
-            if (seq <= 3) {
-                seq = 3;
-                cur++;
-            } else
-                return 1;
+            if (seq > 3)
+                goto error;
+            cur++;
+            seq = 3;
         } else if (seq == 3)
             goto error;
 
-        /* parse the number portion of the item */
-        PARSE_NUM(num, cur, num_type);
+        /* Parse integral part. */
+        while (*cur >= '0' && *cur <= '9') {
+            long digit = *cur - '0';
 
-        if ((num_type == -1) || (*cur == 0))
-            goto error;
+            if (num > LONG_MAX / 10)
+                goto error;
+            num *= 10;
+            if (num > LONG_MAX - digit)
+                goto error;
+            num += digit;
 
-        /* update duration based on item type */
-        while (seq < sizeof(desig)) {
-            if (*cur == desig[seq]) {
+            has_digits = 1;
+            cur++;
+        }
 
-                /* verify numeric type; only seconds can be float */
-                if ((num_type != 0) && (seq < (sizeof(desig)-1)))
-                    goto error;
-
-                switch (seq) {
-                    case 0:
-                        dur->value.dur.mon = (long)num * 12;
-                        break;
-                    case 1:
-                        dur->value.dur.mon += (long)num;
-                        break;
-                    default:
-                        /* convert to seconds using multiplier */
-                        dur->value.dur.sec += num * multi[seq];
-                        seq++;
-                        break;
-                }
-
-                break;          /* exit loop */
+        if (*cur == '.') {
+            /* Parse fractional part. */
+            double mult = 1.0;
+            cur++;
+            has_frac = 1;
+            while (*cur >= '0' && *cur <= '9') {
+                mult /= 10.0;
+                sec_frac += (*cur - '0') * mult;
+                has_digits = 1;
+                cur++;
             }
-            /* no date designators found? */
-            if ((++seq == 3) || (seq == 6))
+        }
+
+        while (*cur != desig[seq]) {
+            seq++;
+            /* No T designator or invalid char. */
+            if (seq == 3 || seq == sizeof(desig))
                 goto error;
         }
 	cur++;
-	if (collapse)
-	    while IS_WSP_BLANK_CH(*cur) cur++;
+
+        if (!has_digits || (has_frac && (seq != 5)))
+            goto error;
+
+        switch (seq) {
+            case 0:
+                /* Year */
+                if (num > LONG_MAX / 12)
+                    goto error;
+                dur->value.dur.mon = num * 12;
+                break;
+            case 1:
+                /* Month */
+                if (dur->value.dur.mon > LONG_MAX - num)
+                    goto error;
+                dur->value.dur.mon += num;
+                break;
+            case 2:
+                /* Day */
+                dur->value.dur.day = num;
+                break;
+            case 3:
+                /* Hour */
+                days = num / HOURS_PER_DAY;
+                if (dur->value.dur.day > LONG_MAX - days)
+                    goto error;
+                dur->value.dur.day += days;
+                secs = (num % HOURS_PER_DAY) * SECS_PER_HOUR;
+                break;
+            case 4:
+                /* Minute */
+                days = num / MINS_PER_DAY;
+                if (dur->value.dur.day > LONG_MAX - days)
+                    goto error;
+                dur->value.dur.day += days;
+                secs += (num % MINS_PER_DAY) * SECS_PER_MIN;
+                break;
+            case 5:
+                /* Second */
+                days = num / SECS_PER_DAY;
+                if (dur->value.dur.day > LONG_MAX - days)
+                    goto error;
+                dur->value.dur.day += days;
+                secs += num % SECS_PER_DAY;
+                break;
+        }
+
+        seq++;
     }
+
+    days = secs / SECS_PER_DAY;
+    if (dur->value.dur.day > LONG_MAX - days)
+        goto error;
+    dur->value.dur.day += days;
+    dur->value.dur.sec = (secs % SECS_PER_DAY) + sec_frac;
 
     if (isneg) {
         dur->value.dur.mon = -dur->value.dur.mon;
@@ -2116,7 +2193,7 @@ xmlSchemaParseUInt(const xmlChar **str, unsigned long *llo,
  * @value: the value to check
  * @val:  the return computed value
  * @node:  the node containing the value
- * flags:  flags to control the vlidation
+ * flags:  flags to control the validation
  *
  * Check that a value conforms to the lexical space of the atomic type.
  * if true a value is computed and returned in @val.
@@ -2141,7 +2218,7 @@ xmlSchemaValAtomicType(xmlSchemaTypePtr type, const xmlChar * value,
         return (-1);
 
     /*
-     * validating a non existant text node is similar to validating
+     * validating a non existent text node is similar to validating
      * an empty one.
      */
     if (value == NULL)
@@ -2622,7 +2699,7 @@ xmlSchemaValAtomicType(xmlSchemaTypePtr type, const xmlChar * value,
                 goto return0;
             }
         case XML_SCHEMAS_LANGUAGE:
-	    if (normOnTheFly) {
+	    if ((norm == NULL) && (normOnTheFly)) {
 		norm = xmlSchemaCollapseString(value);
 		if (norm != NULL)
 		    value = norm;
@@ -2911,7 +2988,7 @@ xmlSchemaValAtomicType(xmlSchemaTypePtr type, const xmlChar * value,
                 if (*value != 0) {
 		    xmlURIPtr uri;
 		    xmlChar *tmpval, *cur;
-		    if (normOnTheFly) {
+		    if ((norm == NULL) && (normOnTheFly)) {
 			norm = xmlSchemaCollapseString(value);
 			if (norm != NULL)
 			    value = norm;
@@ -3053,7 +3130,7 @@ xmlSchemaValAtomicType(xmlSchemaTypePtr type, const xmlChar * value,
                  * following cases can arise: (1) the final quantum of
                  * encoding input is an integral multiple of 24 bits; here,
                  * the final unit of encoded output will be an integral
-                 * multiple ofindent: Standard input:701: Warning:old style
+                 * multiple of indent: Standard input:701: Warning:old style
 		 * assignment ambiguity in "=*".  Assuming "= *" 4 characters
 		 * with no "=" padding, (2) the final
                  * quantum of encoding input is exactly 8 bits; here, the
@@ -3614,8 +3691,10 @@ xmlSchemaCompareDurations(xmlSchemaValPtr x, xmlSchemaValPtr y)
 	minday = 0;
 	maxday = 0;
     } else {
-	maxday = 366 * ((myear + 3) / 4) +
-	         365 * ((myear - 1) % 4);
+        /* FIXME: This doesn't take leap year exceptions every 100/400 years
+           into account. */
+	maxday = 365 * myear + (myear + 3) / 4;
+        /* FIXME: Needs to be calculated separately */
 	minday = maxday - 1;
     }
 
@@ -3863,7 +3942,7 @@ _xmlSchemaDateAdd (xmlSchemaValPtr dt, xmlSchemaValPtr dur)
 
         temp = r->mon + carry;
         r->mon = (unsigned int) MODULO_RANGE(temp, 1, 13);
-        r->year = r->year + (unsigned int) FQUOTIENT_RANGE(temp, 1, 13);
+        r->year = r->year + (long) FQUOTIENT_RANGE(temp, 1, 13);
         if (r->year == 0) {
             if (temp < 1)
                 r->year--;
@@ -5303,6 +5382,7 @@ xmlSchemaValidateFacetInternal(xmlSchemaFacetPtr facet,
 			       xmlSchemaWhitespaceValueType ws)
 {
     int ret;
+    int stringType;
 
     if (facet == NULL)
 	return(-1);
@@ -5315,7 +5395,15 @@ xmlSchemaValidateFacetInternal(xmlSchemaFacetPtr facet,
 	    */
 	    if (value == NULL)
 		return(-1);
-	    ret = xmlRegexpExec(facet->regexp, value);
+	    /*
+	    * If string-derived type, regexp must be tested on the value space of
+	    * the datatype.
+	    * See https://www.w3.org/TR/xmlschema-2/#rf-pattern
+	    */
+	    stringType = val && ((val->type >= XML_SCHEMAS_STRING && val->type <= XML_SCHEMAS_NORMSTRING)
+			      || (val->type >= XML_SCHEMAS_TOKEN && val->type <= XML_SCHEMAS_NCNAME));
+	    ret = xmlRegexpExec(facet->regexp,
+	                        (stringType && val->value.str) ? val->value.str : value);
 	    if (ret == 1)
 		return(0);
 	    if (ret == 0)
@@ -5385,7 +5473,7 @@ xmlSchemaValidateFacetInternal(xmlSchemaFacetPtr facet,
 	    if ((valType == XML_SCHEMAS_QNAME) ||
 		(valType == XML_SCHEMAS_NOTATION))
 		return (0);
-	    /* No break on purpose. */
+            /* Falls through. */
 	case XML_SCHEMA_FACET_MAXLENGTH:
 	case XML_SCHEMA_FACET_MINLENGTH: {
 	    unsigned int len = 0;
@@ -5978,13 +6066,13 @@ xmlSchemaGetCanonValue(xmlSchemaValPtr val, const xmlChar **retValue)
 		    * recoverable timezone and not "Z".
 		    */
 		    snprintf(buf, 30,
-			"%04ld:%02u:%02uZ",
+			"%04ld-%02u-%02uZ",
 			norm->value.date.year, norm->value.date.mon,
 			norm->value.date.day);
 		    xmlSchemaFreeValue(norm);
 		} else {
 		    snprintf(buf, 30,
-			"%04ld:%02u:%02u",
+			"%04ld-%02u-%02u",
 			val->value.date.year, val->value.date.mon,
 			val->value.date.day);
 		}
@@ -6005,14 +6093,14 @@ xmlSchemaGetCanonValue(xmlSchemaValPtr val, const xmlChar **retValue)
 		    * TODO: Check if "%.14g" is portable.
 		    */
 		    snprintf(buf, 50,
-			"%04ld:%02u:%02uT%02u:%02u:%02.14gZ",
+			"%04ld-%02u-%02uT%02u:%02u:%02.14gZ",
 			norm->value.date.year, norm->value.date.mon,
 			norm->value.date.day, norm->value.date.hour,
 			norm->value.date.min, norm->value.date.sec);
 		    xmlSchemaFreeValue(norm);
 		} else {
 		    snprintf(buf, 50,
-			"%04ld:%02u:%02uT%02u:%02u:%02.14g",
+			"%04ld-%02u-%02uT%02u:%02u:%02.14g",
 			val->value.date.year, val->value.date.mon,
 			val->value.date.day, val->value.date.hour,
 			val->value.date.min, val->value.date.sec);

@@ -19,7 +19,7 @@
 
 
 /**
-***     ILE/RPG cannot directly derefence a pointer and has no macros.
+***     ILE/RPG cannot directly dereference a pointer and has no macros.
 ***     The following additional procedures supply these functions.
 ***     In addition, the following code is adjusted for threads control at
 ***             compile time via the C macros.
@@ -219,7 +219,7 @@ int
 __xmlXPathNodeSetGetLength(const xmlNodeSet * ns)
 
 {
-	return xmlXPathNodeSetGetLength(ns);
+        return xmlXPathNodeSetGetLength(ns);
 }
 
 
@@ -227,7 +227,7 @@ xmlNodePtr
 __xmlXPathNodeSetItem(const xmlNodeSet * ns, int index)
 
 {
-	return xmlXPathNodeSetItem(ns, index);
+        return xmlXPathNodeSetItem(ns, index);
 }
 
 
@@ -235,7 +235,7 @@ int
 __xmlXPathNodeSetIsEmpty(const xmlNodeSet * ns)
 
 {
-	return xmlXPathNodeSetIsEmpty(ns);
+        return xmlXPathNodeSetIsEmpty(ns);
 }
 
 #endif
@@ -247,16 +247,16 @@ const char *
 __htmlDefaultSubelement(const htmlElemDesc * elt)
 
 {
-	return htmlDefaultSubelement(elt);
+        return htmlDefaultSubelement(elt);
 }
 
 
 int
 __htmlElementAllowedHereDesc(const htmlElemDesc * parent,
-						const htmlElemDesc * elt)
+                                                const htmlElemDesc * elt)
 
 {
-	return htmlElementAllowedHereDesc(parent, elt);
+        return htmlElementAllowedHereDesc(parent, elt);
 }
 
 
@@ -264,7 +264,7 @@ const char * *
 __htmlRequiredAttrs(const htmlElemDesc * elt)
 
 {
-	return htmlRequiredAttrs(elt);
+        return htmlRequiredAttrs(elt);
 }
 
 #endif
